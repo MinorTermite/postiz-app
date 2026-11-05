@@ -57,6 +57,10 @@ export type AllProvidersSettings =
   | ProviderExtension<'bluesky', None>
   | ProviderExtension<'telegram', None>
   | ProviderExtension<'nostr', None>
+  | ProviderExtension<'vk-group', None>
+  | ProviderExtension<'max', None>
+  | ProviderExtension<'ok', None>
+  | ProviderExtension<'rutube', None>
   | ProviderExtension<'moltbook', MoltbookDto>
   | ProviderExtension<'vk', None>
   | ProviderExtension<'skool', SkoolDto>
@@ -97,6 +101,10 @@ export const allProviders = (setEmpty?: any) => {
     { value: setEmpty, name: 'bluesky' },
     { value: setEmpty, name: 'telegram' },
     { value: setEmpty, name: 'nostr' },
+    { value: setEmpty, name: 'vk-group' },
+    { value: setEmpty, name: 'max' },
+    { value: setEmpty, name: 'ok' },
+    { value: setEmpty, name: 'rutube' },
     { value: setEmpty, name: 'vk' },
     { value: MoltbookDto, name: 'moltbook' },
     { value: SkoolDto, name: 'skool' },

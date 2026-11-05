@@ -80,7 +80,7 @@ export const ContinueIntegration: FC<{
       };
     }
 
-    if (provider === 'vk') {
+    if (provider === 'vk' || provider === 'vk-group') {
       return {
         ...searchParams,
         state: searchParams.state || '',
@@ -273,6 +273,7 @@ export const ContinueIntegration: FC<{
       gmb: 'Google Business',
       tumblr: 'Tumblr',
       'tiktok-business': 'TikTok Business',
+      'vk-group': 'VK',
     };
     return names[provider] || provider;
   }, [provider]);

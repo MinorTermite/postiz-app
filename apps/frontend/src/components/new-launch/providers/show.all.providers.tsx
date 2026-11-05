@@ -24,6 +24,10 @@ import WarpcastProvider from '@gitroom/frontend/components/new-launch/providers/
 import TelegramProvider from '@gitroom/frontend/components/new-launch/providers/telegram/telegram.provider';
 import NostrProvider from '@gitroom/frontend/components/new-launch/providers/nostr/nostr.provider';
 import VkProvider from '@gitroom/frontend/components/new-launch/providers/vk/vk.provider';
+import VkGroupProvider from '@gitroom/frontend/components/new-launch/providers/vk-group/vk.group.provider';
+import MaxProvider from '@gitroom/frontend/components/new-launch/providers/max/max.provider';
+import OkProvider from '@gitroom/frontend/components/new-launch/providers/ok/ok.provider';
+import RutubeProvider from '@gitroom/frontend/components/new-launch/providers/rutube/rutube.provider';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import React, { FC, forwardRef, useEffect, useImperativeHandle } from 'react';
@@ -149,6 +153,22 @@ export const Providers = [
   {
     identifier: 'vk',
     component: VkProvider,
+  },
+  {
+    identifier: 'vk-group',
+    component: VkGroupProvider,
+  },
+  {
+    identifier: 'max',
+    component: MaxProvider,
+  },
+  {
+    identifier: 'ok',
+    component: OkProvider,
+  },
+  {
+    identifier: 'rutube',
+    component: RutubeProvider,
   },
   {
     identifier: 'wordpress',

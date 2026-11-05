@@ -12,10 +12,13 @@ import {
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { createHash, randomBytes } from 'crypto';
-import FormDataNew from 'form-data';
-import mime from 'mime-types';
 import { Integration } from '@prisma/client';
-import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import {
+  ruFileName,
+  ruIsVideo,
+  ruMediaPath,
+  ruMimeType,
+} from '@gitroom/nestjs-libraries/integrations/social/ru/ru.media';
 
 export class VkProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 5; // VK limits are per user token
@@ -101,7 +104,7 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
             process?.env.FRONTEND_URL?.indexOf('https') == -1
               ? `https://redirectmeto.com/${process?.env.FRONTEND_URL}`
               : `${process?.env.FRONTEND_URL}`
-          }/integrations/social/vk`
+          }/integrations/social/${this.identifier}`
         )}` +
         `&state=${state}` +
         `&scope=${encodeURIComponent(this.scopes.join(' '))}`,
@@ -129,7 +132,7 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
         process?.env.FRONTEND_URL?.indexOf('https') == -1
           ? `https://redirectmeto.com/${process?.env.FRONTEND_URL}`
           : `${process?.env.FRONTEND_URL}`
-      }/integrations/social/vk`
+      }/integrations/social/${this.identifier}`
     );
 
     const { access_token, scope, refresh_token, expires_in } = await (
@@ -163,80 +166,83 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  private async uploadMedia(
+  // Uploads the post media to VK. Without groupId the media belongs to the
+  // user (personal wall), with groupId to the community wall.
+  protected async uploadMedia(
     userId: string,
     accessToken: string,
-    post: PostDetails
-  ): Promise<{ id: string; type: string }[]> {
-    return await Promise.all(
-      (post?.media || []).map(async (media) => {
-        const all = await (
-          await this.fetch(
-            hasExtension(media.path, 'mp4')
-              ? `https://api.vk.ru/method/video.save?access_token=${accessToken}&v=5.251`
-              : `https://api.vk.ru/method/photos.getWallUploadServer?owner_id=${userId}&access_token=${accessToken}&v=5.251`
-          )
-        ).json();
-        this.checkApiError(all);
+    post: PostDetails,
+    groupId?: string
+  ): Promise<{ id: string; type: string; ownerId: string }[]> {
+    const result: { id: string; type: string; ownerId: string }[] = [];
+    // sequential: VK throttles parallel uploads of one token (error 6)
+    for (const media of post?.media || []) {
+      const path = ruMediaPath(media.path);
+      const isVideo = ruIsVideo(media);
+      const group = groupId ? `&group_id=${groupId}` : '';
+      const server = await (
+        await this.fetch(
+          isVideo
+            ? `https://api.vk.ru/method/video.save?access_token=${accessToken}&v=5.251&name=${encodeURIComponent(
+                ruFileName(path).replace(/\.[^.]+$/, '')
+              )}${group}`
+            : `https://api.vk.ru/method/photos.getWallUploadServer?access_token=${accessToken}&v=5.251${group}`
+        )
+      ).json();
+      this.checkApiError(server);
 
-        const { data } = await this.getSsrfSafeAxios().get(media.path!, {
-          responseType: 'stream',
+      const file = await this.readOrFetch(path);
+      const formData = new FormData();
+      formData.append(
+        isVideo ? 'video_file' : 'photo',
+        new Blob([new Uint8Array(file)], { type: ruMimeType(path) }),
+        ruFileName(path)
+      );
+      const uploaded = await (
+        await fetch(server.response.upload_url, {
+          method: 'POST',
+          body: formData,
+        })
+      ).json();
+      this.checkApiError(uploaded);
+
+      if (isVideo) {
+        result.push({
+          id: String(server.response.video_id || uploaded.video_id),
+          ownerId: String(server.response.owner_id || uploaded.owner_id),
+          type: 'video',
         });
+        continue;
+      }
 
-        const slash = media.path.split('/').at(-1);
+      const formSend = new FormData();
+      formSend.append('photo', uploaded.photo);
+      formSend.append('server', uploaded.server);
+      formSend.append('hash', uploaded.hash);
+      if (groupId) {
+        formSend.append('group_id', groupId);
+      }
 
-        const formData = new FormDataNew();
-        formData.append('photo', data, {
-          filename: slash,
-          contentType: mime.lookup(slash!) || '',
-        });
-        const value = (
-          await this.getSsrfSafeAxios().post(
-            all.response.upload_url,
-            formData,
-            {
-              headers: {
-                ...formData.getHeaders(),
-              },
-            }
-          )
-        ).data;
+      const saved = await (
+        await fetch(
+          `https://api.vk.ru/method/photos.saveWallPhoto?access_token=${accessToken}&v=5.251`,
+          {
+            method: 'POST',
+            body: formSend,
+          }
+        )
+      ).json();
+      this.checkApiError(saved);
+      const { id, owner_id } = saved.response[0];
 
-        if (hasExtension(media.path, 'mp4')) {
-          return {
-            id: all.response.video_id,
-            type: 'video',
-          };
-        }
-
-        const formSend = new FormData();
-        formSend.append('photo', value.photo);
-        formSend.append('server', value.server);
-        formSend.append('hash', value.hash);
-
-        const saved = await (
-          await fetch(
-            `https://api.vk.ru/method/photos.saveWallPhoto?access_token=${accessToken}&v=5.251`,
-            {
-              method: 'POST',
-              body: formSend,
-            }
-          )
-        ).json();
-        this.checkApiError(saved);
-        const { id } = saved.response[0];
-
-        return {
-          id,
-          type: 'photo',
-        };
-      })
-    );
+      result.push({ id: String(id), ownerId: String(owner_id), type: 'photo' });
+    }
+    return result;
   }
 
   // VK answers HTTP 200 with { error } instead of { response } on failures,
   // so this.fetch never sees them and the post used to be marked completed.
-  private checkApiError(all: any) {
+  protected checkApiError(all: any) {
     if (!all?.error) {
       return;
     }
@@ -267,7 +273,7 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
     if (mediaList.length) {
       body.append(
         'attachments',
-        mediaList.map((p) => `${p.type}${userId}_${p.id}`).join(',')
+        mediaList.map((p) => `${p.type}${p.ownerId}_${p.id}`).join(',')
       );
     }
 
@@ -313,7 +319,7 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
     if (mediaList.length) {
       body.append(
         'attachments',
-        mediaList.map((p) => `${p.type}${userId}_${p.id}`).join(',')
+        mediaList.map((p) => `${p.type}${p.ownerId}_${p.id}`).join(',')
       );
     }
 

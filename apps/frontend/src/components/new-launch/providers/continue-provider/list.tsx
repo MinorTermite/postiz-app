@@ -5,6 +5,7 @@ import { FacebookContinue } from '@gitroom/frontend/components/new-launch/provid
 import { LinkedinContinue } from '@gitroom/frontend/components/new-launch/providers/continue-provider/linkedin/linkedin.continue';
 import { GmbContinue } from '@gitroom/frontend/components/new-launch/providers/continue-provider/gmb/gmb.continue';
 import { YoutubeContinue } from '@gitroom/frontend/components/new-launch/providers/continue-provider/youtube/youtube.continue';
+import { VkGroupContinue } from '@gitroom/frontend/components/new-launch/providers/continue-provider/vk-group/vk.group.continue';
 import { TumblrContinue } from '@gitroom/frontend/components/new-launch/providers/continue-provider/tumblr/tumblr.continue';
 
 export const continueProviderList = {
@@ -14,4 +15,5 @@ export const continueProviderList = {
   gmb: GmbContinue,
   youtube: YoutubeContinue,
   tumblr: TumblrContinue,
+  'vk-group': VkGroupContinue,
 };

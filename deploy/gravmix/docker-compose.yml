@@ -1,0 +1,118 @@
+# GravMix / Slava self-hosted Postiz, Russian edition (postiz-ru).
+# Run from this folder:  docker compose up -d
+# Secrets and social API keys live in ./.env (gitignored), template: ./.env.example
+#
+# Lite stack: 4 containers. Temporal keeps both its state and visibility in the
+# shared Postgres (SQL advanced visibility) instead of a separate Postgres plus
+# Elasticsearch. Temporal UI only with:  docker compose --profile debug up -d
+name: postiz-gravmix
+
+services:
+  postiz:
+    image: ${POSTIZ_IMAGE:-postiz-ru:latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postiz:${POSTGRES_PASSWORD}@postiz-postgres:5432/postiz
+      REDIS_URL: redis://postiz-redis:6379
+      BACKEND_INTERNAL_URL: http://localhost:3000
+      TEMPORAL_ADDRESS: temporal:7233
+      IS_GENERAL: 'true'
+      STORAGE_PROVIDER: local
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
+      NX_ADD_PLUGINS: 'false'
+    volumes:
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
+    ports:
+      - '${POSTIZ_BIND:-127.0.0.1}:${POSTIZ_PORT:-4007}:5000'
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+
+  postiz-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postiz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postiz
+    volumes:
+      - postiz-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postiz -d postiz
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postiz-redis:
+    image: redis:7.2
+    restart: unless-stopped
+    volumes:
+      - postiz-redis:/data
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  temporal:
+    image: temporalio/auto-setup:1.28.1
+    restart: unless-stopped
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=postiz
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postiz-postgres
+      - DBNAME=temporal
+      - VISIBILITY_DBNAME=temporal_visibility
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - TEMPORAL_NAMESPACE=default
+      # SQL visibility allows only 3 Text attributes per namespace; Postiz needs 2
+      # (postId, organizationId), so the demo Custom* attributes are not created
+      - SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES=true
+    # inline config instead of a bind mount: Docker Desktop may not see files
+    # of the install folder (%LOCALAPPDATA%), compose copies this into the container
+    configs:
+      - source: temporal-dynamicconfig
+        target: /etc/temporal/config/dynamicconfig/development-sql.yaml
+    healthcheck:
+      test: ['CMD-SHELL', 'tctl --address temporal:7233 cluster health | grep -q SERVING']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  temporal-ui:
+    image: temporalio/ui:2.34.0
+    profiles: [debug]
+    restart: unless-stopped
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    ports:
+      - '127.0.0.1:${TEMPORAL_UI_PORT:-8088}:8080'
+
+configs:
+  temporal-dynamicconfig:
+    content: |
+      limit.maxIDLength:
+        - value: 255
+          constraints: {}
+      system.forceSearchAttributesCacheRefreshOnRead:
+        - value: true
+          constraints: {}
+
+volumes:
+  postiz-config:
+  postiz-uploads:
+  postiz-postgres:
+  postiz-redis:
