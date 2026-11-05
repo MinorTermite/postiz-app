@@ -199,19 +199,20 @@ namespace PostizRu
             Progress(30);
 
             string image = Path.Combine(_payload, "postiz-ru-image.tar.gz");
-            if (File.Exists(image))
+            bool downloaded = false;
+            if (!File.Exists(image))
             {
-                Log("Загружаю образ программы в Docker (несколько минут)...");
-                if (Common.Docker("load -i \"" + image + "\"", Log, 1800000) != 0)
-                {
-                    Log("Не удалось загрузить образ.");
-                    return false;
-                }
+                image = Path.Combine(Path.GetTempPath(), "postiz-ru-image.tar.gz");
+                if (!DownloadImage(ImageUrl, image)) return false;
+                downloaded = true;
             }
-            else
+            Log("Загружаю образ программы в Docker (несколько минут)...");
+            int loaded = Common.Docker("load -i \"" + image + "\"", Log, 1800000);
+            if (downloaded) try { File.Delete(image); } catch { }
+            if (loaded != 0)
             {
-                Log("Образ не вложен, скачиваю " + EnvValue(dir, "POSTIZ_IMAGE") + " ...");
-                if (Common.Docker("compose pull postiz", Log, 1800000) != 0) return false;
+                Log("Не удалось загрузить образ.");
+                return false;
             }
             Progress(60);
 
@@ -244,6 +245,51 @@ namespace PostizRu
             Log("Первый вход: зарегистрируйте аккаунт владельца. Затем в " + dir + "\\.env поставьте DISABLE_REGISTRATION=true и выберите в трее «Перезапустить».");
             Process.Start(Common.LauncherPath, open ? "" : "--background");
             return true;
+        }
+
+        // image of this release, used when the package has no bundled postiz-ru-image.tar.gz
+        private const string ImageUrl =
+            "https://github.com/MinorTermite/postiz-app/releases/download/v2.25.3-ru/postiz-ru-image.tar.gz";
+
+        private bool DownloadImage(string url, string file)
+        {
+            Log("Скачиваю образ программы (около 1,6 ГБ): " + url);
+            try
+            {
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                var req = (HttpWebRequest)WebRequest.Create(url);
+                req.UserAgent = "PostizRU-Setup";
+                req.Timeout = 60000;
+                req.ReadWriteTimeout = 120000;
+                using (var resp = (HttpWebResponse)req.GetResponse())
+                using (var input = resp.GetResponseStream())
+                using (var output = File.Create(file))
+                {
+                    long total = resp.ContentLength;
+                    long done = 0;
+                    long nextLog = 0;
+                    var buffer = new byte[1 << 20];
+                    int n;
+                    while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        output.Write(buffer, 0, n);
+                        done += n;
+                        if (total > 0) Progress(30 + (int)(25 * done / total));
+                        if (done >= nextLog)
+                        {
+                            Log("Скачано " + (done >> 20) + " МБ" + (total > 0 ? " из " + (total >> 20) + " МБ" : ""));
+                            nextLog += 100L << 20;
+                        }
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log("Скачать образ не удалось: " + ex.Message + ". Проверьте интернет и запустите Setup.exe снова.");
+                try { File.Delete(file); } catch { }
+                return false;
+            }
         }
 
         // Setup.exe --silent: defaults (shortcut, autostart, no window), log in %TEMP%\postiz-ru-setup.log

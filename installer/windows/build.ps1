@@ -47,4 +47,15 @@ if (-not $SkipImage) {
     Remove-Item $tar -Force
 }
 
-Get-ChildItem $dist -Recurse -File | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length / 1MB, 1)}}
+# release zip without the image: Setup.exe downloads it from the GitHub release
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+$zipPath = Join-Path $PSScriptRoot 'dist\PostizRU-Setup.zip'
+if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+$zipFile = [System.IO.Compression.ZipFile]::Open($zipPath, 'Create')
+Get-ChildItem $dist -Recurse -File | Where-Object { $_.Name -notlike '*.tar.gz' } | ForEach-Object {
+    $rel = 'PostizRU-Setup/' + $_.FullName.Substring($dist.Length + 1).Replace('\', '/')
+    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipFile, $_.FullName, $rel) | Out-Null
+}
+$zipFile.Dispose()
+
+Get-ChildItem (Join-Path $PSScriptRoot 'dist') -Recurse -File | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length / 1MB, 1)}}
