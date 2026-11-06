@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { Provider, User } from '@prisma/client';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
@@ -365,6 +365,21 @@ export class AuthService {
             )
           : false;
       return { jwt: await this.jwt(checkExists), addedOrg };
+    }
+
+    // Google sign-in opens the existing owner account with the same verified email
+    if (provider === Provider.GOOGLE && user.email) {
+      const localUser = await this._userService.getUserByEmail(user.email);
+      if (localUser?.activated) {
+        return { jwt: await this.jwt(localUser), addedOrg: false };
+      }
+    }
+
+    if (!(await this.canRegister(provider))) {
+      throw new HttpException(
+        'Этот аккаунт не привязан к GravMix: войдите почтой владельца',
+        403
+      );
     }
 
     return { token };

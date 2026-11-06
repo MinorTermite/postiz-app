@@ -36,21 +36,29 @@ export function Register() {
   const [code, setCode] = useState(getQuery?.get('code') || '');
   const [state] = useState(getQuery?.get('state') || '');
   const [show, setShow] = useState(false);
+  const [error, setError] = useState('');
   useEffect(() => {
     if (provider && code) {
       load();
     }
   }, []);
   const load = useCallback(async () => {
-    const { token } = await (
-      await fetch(`/auth/oauth/${provider?.toUpperCase() || 'LOCAL'}/exists`, {
+    const res = await fetch(
+      `/auth/oauth/${provider?.toUpperCase() || 'LOCAL'}/exists`,
+      {
         method: 'POST',
         body: JSON.stringify({
           code,
           state,
         }),
-      })
-    ).json();
+      }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data?.message || 'Не удалось войти');
+      return;
+    }
+    const { token } = data;
     if (token) {
       setCode(token);
       setShow(true);
@@ -58,6 +66,16 @@ export function Register() {
   }, [provider, code]);
   if (!code && !provider) {
     return <RegisterAfter token="" provider="LOCAL" />;
+  }
+  if (error) {
+    return (
+      <div className="flex flex-col gap-[16px]">
+        <div className="text-red-400">{error}</div>
+        <Link href="/auth/login" className="underline">
+          Ко входу
+        </Link>
+      </div>
+    );
   }
   if (!show) {
     return <LoadingComponent />;
