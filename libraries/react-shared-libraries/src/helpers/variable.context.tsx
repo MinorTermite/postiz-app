@@ -4,6 +4,7 @@ import { createContext, FC, ReactNode, useContext, useEffect } from 'react';
 interface VariableContextInterface {
   stripeClient: string;
   billingEnabled: boolean;
+  paymentProvider?: string;
   isChatBase: boolean;
   isGeneral: boolean;
   genericOauth: boolean;
@@ -40,6 +41,7 @@ interface VariableContextInterface {
 const VariableContext = createContext({
   stripeClient: '',
   billingEnabled: false,
+  paymentProvider: '',
   isGeneral: true,
   genericOauth: false,
   isChatBase: false,
@@ -97,3 +99,7 @@ export const loadVars = () => {
   // @ts-ignore
   return window.vars as VariableContextInterface;
 };
+
+// Currency sign of the web payment provider: YooKassa charges in rubles
+export const useCurrencySign = () =>
+  useVariables().paymentProvider === 'yookassa' ? '₽' : '$';

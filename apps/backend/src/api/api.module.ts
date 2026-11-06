@@ -8,6 +8,7 @@ import { PaymentController } from '@gitroom/backend/api/routes/payment.controlle
 import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
 import { PaymentProviderManager } from '@gitroom/nestjs-libraries/services/payment/payment.provider.manager';
 import { RevenueCatProvider } from '@gitroom/nestjs-libraries/services/payment/providers/revenuecat.provider';
+import { YooKassaProvider } from '@gitroom/nestjs-libraries/services/payment/providers/yookassa.provider';
 import { AnalyticsController } from '@gitroom/backend/api/routes/analytics.controller';
 import { PoliciesGuard } from '@gitroom/backend/services/auth/permissions/permissions.guard';
 import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
@@ -108,6 +109,7 @@ const authenticatedController = [
     PaymentService,
     PaymentProviderManager,
     RevenueCatProvider,
+    YooKassaProvider,
     OpenaiService,
     ExtractContentService,
     AuthMiddleware,

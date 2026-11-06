@@ -1,0 +1,38 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# videos for YouTube / Rutube / VK clips
+	request_body {
+		max_size 2GB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# public offer and privacy policy (static pages from ./legal)
+	handle_path /legal/* {
+		root * /srv/legal
+		file_server
+	}
+
+	handle {
+		reverse_proxy postiz:5000 {
+			transport http {
+				read_timeout 10m
+				write_timeout 10m
+			}
+		}
+	}
+}
+
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

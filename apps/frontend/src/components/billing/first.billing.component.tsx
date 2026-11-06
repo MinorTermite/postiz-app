@@ -3,7 +3,10 @@
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
+import {
+  useCurrencySign,
+  useVariables,
+} from '@gitroom/react/helpers/variable.context';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { OrganizationSelector } from '@gitroom/frontend/components/layout/organization.selector';
 import { LanguageComponent } from '@gitroom/frontend/components/layout/language.component';
@@ -48,7 +51,10 @@ const EmbeddedBilling = dynamic(
 );
 
 export const FirstBillingComponent = () => {
-  const { stripeClient } = useVariables();
+  const { stripeClient, paymentProvider } = useVariables();
+  const sign = useCurrencySign();
+  // YooKassa has no embedded form: the checkout opens on its hosted page
+  const hosted = paymentProvider === 'yookassa';
   const user = useUser();
   const dub = useDubClickId();
   const [stripe, setStripe] = useState<null | Promise<Stripe>>(null);
@@ -65,6 +71,9 @@ export const FirstBillingComponent = () => {
   const [fbp] = useCookie('_fbp', '');
 
   useEffect(() => {
+    if (hosted) {
+      return;
+    }
     const stripePromise = loadStripe(stripeClient);
     stripePromise.catch(() => setStripeFailed(true));
     setStripe(stripePromise);
@@ -235,6 +244,15 @@ export const FirstBillingComponent = () => {
                 'The payment form could not be loaded. Please disable ad blockers or privacy extensions for this page and reload.'
               )}
             </div>
+          ) : hosted && !isLoading && data?.url ? (
+            <div className="mt-[24px] flex">
+              <a
+                href={data.url}
+                className="h-[52px] px-[32px] rounded-[12px] bg-btnPrimary text-white text-[18px] font-[600] flex items-center"
+              >
+                {t('billing_pay_yookassa', 'Pay with YooKassa')}
+              </a>
+            </div>
           ) : !isLoading && data && stripe ? (
             <EmbeddedBilling
               stripe={stripe}
@@ -301,7 +319,7 @@ export const FirstBillingComponent = () => {
                     </div>
                     <div className="text-[24px] mobile:text-[18px] font-[400]">
                       <span className="text-[44px] mobile:text-[30px] font-[600]">
-                        $
+                        {sign}
                         {
                           value[
                             period === 'MONTHLY' ? 'month_price' : 'year_price'

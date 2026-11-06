@@ -20,6 +20,7 @@ export interface PricingInnerInterface {
 export interface PricingInterface {
   [key: string]: PricingInnerInterface;
 }
+// Prices are in rubles: GravMix bills Russian customers through YooKassa
 export const pricing: PricingInterface = {
   FREE: {
     current: 'FREE',
@@ -42,8 +43,8 @@ export const pricing: PricingInterface = {
   },
   STANDARD: {
     current: 'STANDARD',
-    month_price: 29,
-    year_price: 278,
+    month_price: 990,
+    year_price: 9490,
     channel: 5,
     posts_per_month: 1000000,
     image_generation_count: 20,
@@ -61,8 +62,8 @@ export const pricing: PricingInterface = {
   },
   TEAM: {
     current: 'TEAM',
-    month_price: 39,
-    year_price: 374,
+    month_price: 1990,
+    year_price: 19090,
     channel: 10,
     posts_per_month: 1000000,
     image_generation_count: 100,
@@ -80,8 +81,8 @@ export const pricing: PricingInterface = {
   },
   PRO: {
     current: 'PRO',
-    month_price: 49,
-    year_price: 470,
+    month_price: 2990,
+    year_price: 28690,
     channel: 30,
     posts_per_month: 1000000,
     image_generation_count: 300,
@@ -99,8 +100,8 @@ export const pricing: PricingInterface = {
   },
   ULTIMATE: {
     current: 'ULTIMATE',
-    month_price: 99,
-    year_price: 950,
+    month_price: 5990,
+    year_price: 57490,
     channel: 100,
     posts_per_month: 1000000,
     image_generation_count: 500,

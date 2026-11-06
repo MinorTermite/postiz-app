@@ -91,6 +91,28 @@ export class SubscriptionService {
     );
   }
 
+  setPaidPeriod(
+    organizationId: string,
+    data: {
+      paidUntil: Date;
+      paymentMethodId?: string | null;
+      lastPaymentId: string;
+    }
+  ) {
+    return this._subscriptionRepository.setPaidPeriod(organizationId, data);
+  }
+
+  getDuePaidSubscriptions(provider: string, before: Date) {
+    return this._subscriptionRepository.getDuePaidSubscriptions(
+      provider,
+      before
+    );
+  }
+
+  getSubscriptionByOrgId(organizationId: string) {
+    return this._subscriptionRepository.getSubscriptionByOrgId(organizationId);
+  }
+
   async checkSubscription(organizationId: string, subscriptionId: string) {
     return await this._subscriptionRepository.checkSubscription(
       organizationId,

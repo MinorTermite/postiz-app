@@ -29,6 +29,7 @@ import {
   Sections,
   SubscriptionException,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 // A reason retrying can't change (private video, no minutes left, no speech):
 // the workflow stops and the message is what the customer reads
@@ -156,7 +157,7 @@ export class ClippingService {
   // Minutes the organization can still spend. An install without billing has no
   // plans to meter against, the same way image generation treats it
   private async balance(organizationId: string) {
-    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+    if (!isBillingEnabled()) {
       return MAX_SOURCE_MINUTES;
     }
 

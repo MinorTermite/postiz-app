@@ -17,7 +17,10 @@ import { BillingHistory } from '@gitroom/frontend/components/billing/billing.his
 import useSWR, { useSWRConfig } from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
+import {
+  useCurrencySign,
+  useVariables,
+} from '@gitroom/react/helpers/variable.context';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { Textarea } from '@gitroom/react/form/textarea';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
@@ -43,6 +46,7 @@ export const Prorate: FC<{
 }> = (props) => {
   const { period, pack } = props;
   const t = useT();
+  const sign = useCurrencySign();
   const fetch = useFetch();
   const [price, setPrice] = useState<number | false>(false);
   const calculatePrice = useDebouncedCallback(async () => {
@@ -70,7 +74,8 @@ export const Prorate: FC<{
   }
   return (
     <div className="animate-fadeIn">
-      {t('pay_today', 'Pay Today')} ${Math.max(price, 0).toFixed(2)}
+      {t('pay_today', 'Pay Today')} {sign}
+      {Math.max(price, 0).toFixed(2)}
     </div>
   );
 };
@@ -243,6 +248,7 @@ const PlanCard: FC<{
   const { name, price, yearly, current, action, loading, disabled, note } =
     props;
   const t = useT();
+  const sign = useCurrencySign();
   const features = useBillingFeatures(name);
 
   return (
@@ -282,7 +288,8 @@ const PlanCard: FC<{
       </div>
       <div className="flex items-baseline gap-[6px]">
         <div className="text-[40px] leading-[48px] font-[600] tracking-tight">
-          ${price}
+          {sign}
+          {price}
         </div>
         <div
           className={clsx(

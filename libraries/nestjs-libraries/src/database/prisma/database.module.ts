@@ -20,6 +20,7 @@ import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service
 import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
 import { PaymentProviderManager } from '@gitroom/nestjs-libraries/services/payment/payment.provider.manager';
 import { RevenueCatProvider } from '@gitroom/nestjs-libraries/services/payment/providers/revenuecat.provider';
+import { YooKassaProvider } from '@gitroom/nestjs-libraries/services/payment/providers/yookassa.provider';
 import { ExtractContentService } from '@gitroom/nestjs-libraries/openai/extract.content.service';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { DeepgramService } from '@gitroom/nestjs-libraries/deepgram/deepgram.service';
@@ -77,6 +78,7 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     PaymentService,
     PaymentProviderManager,
     RevenueCatProvider,
+    YooKassaProvider,
     SignatureRepository,
     AutopostRepository,
     AutopostService,

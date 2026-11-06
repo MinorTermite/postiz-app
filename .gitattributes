@@ -1,0 +1,3 @@
+# scripts run on Linux servers keep LF on any checkout
+deploy/production/*.sh text eol=lf
+deploy/production/Caddyfile text eol=lf

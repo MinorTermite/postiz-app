@@ -65,3 +65,8 @@ apps/frontend/public/g.js
 
 deploy/gravmix/.env
 installer/windows/dist/
+
+# production bundle on the VPS
+deploy/production/.env
+deploy/production/backups/
+deploy/production/*.tar.gz

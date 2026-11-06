@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { Organization, ShortLinkPreference, User } from '@prisma/client';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @Injectable()
 export class OrganizationService {
@@ -130,7 +131,7 @@ export class OrganizationService {
     const tier =
       // @ts-ignore
       org?.subscription?.subscriptionTier ||
-      (!process.env.STRIPE_PUBLISHABLE_KEY ? 'ULTIMATE' : 'FREE');
+      (!isBillingEnabled() ? 'ULTIMATE' : 'FREE');
 
     if (!pricing[tier].team_members) {
       throw new HttpException(

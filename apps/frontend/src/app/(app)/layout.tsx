@@ -1,4 +1,8 @@
 import { SentryComponent } from '@gitroom/frontend/components/layout/sentry.component';
+import {
+  isBillingEnabled,
+  webPaymentProvider,
+} from '@gitroom/helpers/utils/billing.enabled';
 
 export const dynamic = 'force-dynamic';
 import '../global.scss';
@@ -56,7 +60,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           plontoKey={process.env.NEXT_PUBLIC_POLOTNO!}
           stripeClient={process.env.STRIPE_PUBLISHABLE_KEY!}
           isChatBase={!!process.env.CHATBASE_TOKEN}
-          billingEnabled={!!process.env.STRIPE_PUBLISHABLE_KEY}
+          billingEnabled={isBillingEnabled()}
+          paymentProvider={webPaymentProvider()}
           discordUrl={process.env.NEXT_PUBLIC_DISCORD_SUPPORT!}
           frontEndUrl={process.env.FRONTEND_URL!}
           isGeneral={!!process.env.IS_GENERAL}

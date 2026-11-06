@@ -4,6 +4,7 @@ import {
   PaymentPlatform,
   PaymentProviderAbstract,
 } from '@gitroom/nestjs-libraries/services/payment/payment.provider.interface';
+import { webPaymentProvider } from '@gitroom/helpers/utils/billing.enabled';
 
 @Injectable()
 export class PaymentProviderManager {
@@ -32,11 +33,17 @@ export class PaymentProviderManager {
     }));
   }
 
-  // First registered provider of a platform is the one new subscriptions use
+  // New web subscriptions use the configured web provider (PAYMENT_PROVIDER,
+  // YooKassa when it has keys), otherwise the first registered one
   getDefaultProvider(platform: PaymentPlatform) {
-    const found = this.getProviders().find(
-      (p) => p.provider.platform === platform
-    );
+    const providers = this.getProviders();
+    const found =
+      (platform === 'web' &&
+        providers.find(
+          (p) =>
+            p.name === webPaymentProvider() && p.provider.platform === platform
+        )) ||
+      providers.find((p) => p.provider.platform === platform);
 
     if (!found) {
       throw new Error(`No payment provider registered for ${platform}`);

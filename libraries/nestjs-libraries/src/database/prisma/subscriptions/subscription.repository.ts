@@ -131,6 +131,37 @@ export class SubscriptionRepository {
     });
   }
 
+  setPaidPeriod(
+    organizationId: string,
+    data: {
+      paidUntil: Date;
+      paymentMethodId?: string | null;
+      lastPaymentId: string;
+    }
+  ) {
+    return this._subscription.model.subscription.updateMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+      },
+      data,
+    });
+  }
+
+  // Prepaid subscriptions of a provider whose paid period ends before the date
+  getDuePaidSubscriptions(provider: string, before: Date) {
+    return this._subscription.model.subscription.findMany({
+      where: {
+        provider,
+        deletedAt: null,
+        isLifetime: false,
+        paidUntil: {
+          lte: before,
+        },
+      },
+    });
+  }
+
   async getSubscriptionByOrgId(orgId: string) {
     return this._subscription.model.subscription.findFirst({
       where: {

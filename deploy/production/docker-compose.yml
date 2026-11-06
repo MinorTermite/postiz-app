@@ -1,0 +1,146 @@
+# GravMix production stack for a Linux VPS with a domain.
+# Caddy terminates HTTPS (Let's Encrypt, automatic) and is the only public service.
+# Run from this folder:  docker compose up -d   (install.sh does it the first time)
+name: gravmix
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '20m'
+    max-file: '5'
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./legal:/srv/legal:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      postiz:
+        condition: service_healthy
+
+  postiz:
+    image: ${POSTIZ_IMAGE:-postiz-ru:latest}
+    restart: unless-stopped
+    logging: *logging
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postiz:${POSTGRES_PASSWORD}@postiz-postgres:5432/postiz
+      REDIS_URL: redis://postiz-redis:6379
+      BACKEND_INTERNAL_URL: http://localhost:3000
+      TEMPORAL_ADDRESS: temporal:7233
+      MAIN_URL: https://${DOMAIN}
+      FRONTEND_URL: https://${DOMAIN}
+      NEXT_PUBLIC_BACKEND_URL: https://${DOMAIN}/api
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
+      NX_ADD_PLUGINS: 'false'
+    volumes:
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
+    expose:
+      - '5000'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:5000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+
+  postiz-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: postiz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postiz
+    volumes:
+      - postiz-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postiz -d postiz
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postiz-redis:
+    image: redis:7.2
+    restart: unless-stopped
+    logging: *logging
+    command: redis-server --appendonly yes
+    volumes:
+      - postiz-redis:/data
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  temporal:
+    image: temporalio/auto-setup:1.28.1
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=postiz
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postiz-postgres
+      - DBNAME=temporal
+      - VISIBILITY_DBNAME=temporal_visibility
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - TEMPORAL_NAMESPACE=default
+      - SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES=true
+    configs:
+      - source: temporal-dynamicconfig
+        target: /etc/temporal/config/dynamicconfig/development-sql.yaml
+    healthcheck:
+      test: ['CMD-SHELL', 'tctl --address temporal:7233 cluster health | grep -q SERVING']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+configs:
+  temporal-dynamicconfig:
+    content: |
+      limit.maxIDLength:
+        - value: 255
+          constraints: {}
+      system.forceSearchAttributesCacheRefreshOnRead:
+        - value: true
+          constraints: {}
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postiz-config:
+  postiz-uploads:
+  postiz-postgres:
+  postiz-redis:
