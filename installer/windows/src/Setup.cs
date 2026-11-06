@@ -255,7 +255,7 @@ namespace PostizRu
 
         private bool DownloadImage(string url, string file)
         {
-            Log("Скачиваю образ программы (около 3,3 ГБ, по частям)...");
+            Log("Скачиваю образ программы (около 1,5 ГБ)...");
             try
             {
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
@@ -291,7 +291,7 @@ namespace PostizRu
                             {
                                 output.Write(buffer, 0, n);
                                 done += n;
-                                Progress(30 + (int)Math.Min(25, 25 * done / (3400L << 20)));
+                                Progress(30 + (int)Math.Min(25, 25 * done / (1600L << 20)));
                                 if (done >= nextLog)
                                 {
                                     Log("Скачано " + (done >> 20) + " МБ");
