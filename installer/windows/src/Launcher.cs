@@ -21,7 +21,7 @@ namespace PostizRu
         {
             _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
             var menu = new ContextMenuStrip();
-            var open = new ToolStripMenuItem("Открыть Postiz RU", null, delegate { OpenWindow(); });
+            var open = new ToolStripMenuItem("Открыть " + Common.AppName, null, delegate { OpenWindow(); });
             open.Font = new Font(open.Font, FontStyle.Bold);
             menu.Items.Add(open);
             menu.Items.Add(new ToolStripSeparator());
@@ -117,7 +117,7 @@ namespace PostizRu
                 Notify("Сервис не ответил за 5 минут. Меню -> Журнал.", ToolTipIcon.Warning);
                 return;
             }
-            Notify("Postiz RU работает: " + url, ToolTipIcon.Info);
+            Notify(Common.AppName + " работает: " + url, ToolTipIcon.Info);
             if (openWindow) Common.OpenAppWindow(url);
         }
 

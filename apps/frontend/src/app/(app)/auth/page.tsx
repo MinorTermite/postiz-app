@@ -2,34 +2,26 @@ import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 export const dynamic = 'force-dynamic';
 import { Register } from '@gitroom/frontend/components/auth/register';
 import { Metadata } from 'next';
-import { isGeneralServerSide } from '@gitroom/helpers/utils/is.general.server.side';
-import Link from 'next/link';
-import { getT } from '@gitroom/react/translation/get.translation.service.backend';
-import { LoginWithOidc } from '@gitroom/frontend/components/auth/login.with.oidc';
+import { redirect } from 'next/navigation';
 export const metadata: Metadata = {
-  title: `${isGeneralServerSide() ? 'Postiz' : 'Gitroom'} Register`,
+  title: 'GravMix — создание аккаунта',
   description: '',
 };
 export default async function Auth(params: {searchParams: Promise<{provider: string}>}) {
-  const t = await getT();
   if (process.env.DISABLE_REGISTRATION === 'true') {
     const canRegister = (
       await (await internalFetch('/auth/can-register')).json()
     ).register;
     if (!canRegister && !(await params?.searchParams)?.provider) {
-      return (
-        <>
-          <LoginWithOidc />
-          <div className="text-center">
-            {t('registration_is_disabled', 'Registration is disabled')}
-            <br />
-            <Link className="underline hover:font-bold" href="/auth/login">
-              {t('login_instead', 'Login instead')}
-            </Link>
-          </div>
-        </>
-      );
+      redirect('/auth/login');
     }
   }
-  return <Register />;
+  return (
+    <div className="flex flex-col gap-[16px] w-full">
+      <div className="text-[15px] text-[#B5B5B5]">
+        Первый запуск: создайте аккаунт владельца GravMix. После этого регистрация закроется, вход — только по этой почте и паролю.
+      </div>
+      <Register />
+    </div>
+  );
 }

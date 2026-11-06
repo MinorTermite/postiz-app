@@ -1,11 +1,20 @@
 export const dynamic = 'force-dynamic';
 import { Login } from '@gitroom/frontend/components/auth/login';
 import { Metadata } from 'next';
-import { isGeneralServerSide } from '@gitroom/helpers/utils/is.general.server.side';
+import { redirect } from 'next/navigation';
+import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 export const metadata: Metadata = {
-  title: `${isGeneralServerSide() ? 'Postiz' : 'Gitroom'} Login`,
+  title: 'GravMix — вход',
   description: '',
 };
 export default async function Auth() {
+  if (process.env.DISABLE_REGISTRATION === 'true') {
+    const canRegister = (
+      await (await internalFetch('/auth/can-register')).json()
+    ).register;
+    if (canRegister) {
+      redirect('/auth');
+    }
+  }
   return <Login />;
 }

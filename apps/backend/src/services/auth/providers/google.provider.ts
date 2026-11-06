@@ -55,6 +55,10 @@ export class GoogleProvider extends AuthProviderAbstract {
       .oauth2({ version: 'v2', auth: client })
       .userinfo.get();
 
+    if (!data.verified_email) {
+      throw new HttpException('Google email is not verified', 400);
+    }
+
     return {
       id: data.id!,
       email: data.email!,

@@ -175,6 +175,17 @@ export class AuthService {
       return user;
     }
 
+    // Google confirms the address, so the owner who registered with email and
+    // password can use "Sign in with Google" for the same mailbox.
+    if (provider === Provider.GOOGLE && providerUser.email) {
+      const localUser = await this._userService.getUserByEmail(
+        providerUser.email
+      );
+      if (localUser?.activated) {
+        return localUser;
+      }
+    }
+
     if (!(await this.canRegister(provider))) {
       throw new Error('Registration is disabled');
     }

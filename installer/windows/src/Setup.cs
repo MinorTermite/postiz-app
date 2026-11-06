@@ -241,44 +241,63 @@ namespace PostizRu
             Progress(95);
 
             RegisterApp(dir, desktop, autostart);
-            Log("Готово. Postiz RU работает: " + url);
-            Log("Первый вход: зарегистрируйте аккаунт владельца. Затем в " + dir + "\\.env поставьте DISABLE_REGISTRATION=true и выберите в трее «Перезапустить».");
+            Log("Готово. " + Common.AppName + " работает: " + url);
+            Log("Первый вход: в открывшемся окне создайте аккаунт владельца. После этого регистрация закрывается сама.");
             Process.Start(Common.LauncherPath, open ? "" : "--background");
             return true;
         }
 
-        // image of this release, used when the package has no bundled postiz-ru-image.tar.gz
+        // image of this release, used when the package has no bundled postiz-ru-image.tar.gz;
+        // GitHub limits a release file to 2 GB, so the image is published as .part01, .part02, ...
         private const string ImageUrl =
-            "https://github.com/MinorTermite/postiz-app/releases/download/v2.25.3-ru/postiz-ru-image.tar.gz";
+            "https://github.com/MinorTermite/postiz-app/releases/download/v2.25.3-gravmix/postiz-ru-image.tar.gz.part";
+        private const int ImagePartsMax = 9;
 
         private bool DownloadImage(string url, string file)
         {
-            Log("Скачиваю образ программы (около 1,6 ГБ): " + url);
+            Log("Скачиваю образ программы (около 3,3 ГБ, по частям)...");
             try
             {
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                var req = (HttpWebRequest)WebRequest.Create(url);
-                req.UserAgent = "PostizRU-Setup";
-                req.Timeout = 60000;
-                req.ReadWriteTimeout = 120000;
-                using (var resp = (HttpWebResponse)req.GetResponse())
-                using (var input = resp.GetResponseStream())
+                long done = 0;
+                long nextLog = 0;
+                var buffer = new byte[1 << 20];
                 using (var output = File.Create(file))
                 {
-                    long total = resp.ContentLength;
-                    long done = 0;
-                    long nextLog = 0;
-                    var buffer = new byte[1 << 20];
-                    int n;
-                    while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+                    for (int part = 1; part <= ImagePartsMax; part++)
                     {
-                        output.Write(buffer, 0, n);
-                        done += n;
-                        if (total > 0) Progress(30 + (int)(25 * done / total));
-                        if (done >= nextLog)
+                        string partUrl = url + part.ToString("00");
+                        HttpWebResponse resp;
+                        try
                         {
-                            Log("Скачано " + (done >> 20) + " МБ" + (total > 0 ? " из " + (total >> 20) + " МБ" : ""));
-                            nextLog += 100L << 20;
+                            var req = (HttpWebRequest)WebRequest.Create(partUrl);
+                            req.UserAgent = "GravMix-Setup";
+                            req.Timeout = 60000;
+                            req.ReadWriteTimeout = 120000;
+                            resp = (HttpWebResponse)req.GetResponse();
+                        }
+                        catch (WebException wex)
+                        {
+                            var r = wex.Response as HttpWebResponse;
+                            if (part > 1 && r != null && r.StatusCode == HttpStatusCode.NotFound) break;
+                            throw;
+                        }
+                        Log("Часть " + part + ": " + partUrl);
+                        using (resp)
+                        using (var input = resp.GetResponseStream())
+                        {
+                            int n;
+                            while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+                            {
+                                output.Write(buffer, 0, n);
+                                done += n;
+                                Progress(30 + (int)Math.Min(25, 25 * done / (3400L << 20)));
+                                if (done >= nextLog)
+                                {
+                                    Log("Скачано " + (done >> 20) + " МБ");
+                                    nextLog += 100L << 20;
+                                }
+                            }
                         }
                     }
                 }
@@ -310,7 +329,7 @@ namespace PostizRu
             var answer = (DialogResult)Invoke(new Func<DialogResult>(delegate
             {
                 return MessageBox.Show(this,
-                    "Docker Desktop не найден. Он нужен для работы Postiz RU.\r\n\r\n" +
+                    "Docker Desktop не найден. Он нужен для работы " + Common.AppName + ".\r\n\r\n" +
                     "Установить сейчас? Будет установлен Docker Desktop (около 600 МБ) с принятием его лицензии " +
                     "(бесплатно для личного использования и малого бизнеса). Потребуются права администратора и, возможно, перезагрузка.",
                     Common.AppName, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -435,9 +454,24 @@ namespace PostizRu
             sc.Save();
         }
 
+        // shortcuts of the previous name "Postiz RU"
+        private static void RemoveLegacyShortcuts()
+        {
+            try
+            {
+                string old = "Postiz RU";
+                string desk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), old + ".lnk");
+                if (File.Exists(desk)) File.Delete(desk);
+                string menu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), old);
+                if (Directory.Exists(menu)) Directory.Delete(menu, true);
+            }
+            catch (Exception) { }
+        }
+
         private void RegisterApp(string dir, bool desktop, bool autostart)
         {
             string icon = Path.Combine(dir, "postiz-ru.ico");
+            RemoveLegacyShortcuts();
             string startMenu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), Common.AppName);
             Directory.CreateDirectory(startMenu);
             Shortcut(Path.Combine(startMenu, Common.AppName + ".lnk"), Common.LauncherPath, "", icon);
@@ -449,7 +483,7 @@ namespace PostizRu
             using (var k = Registry.CurrentUser.CreateSubKey(Common.UninstallKey))
             {
                 k.SetValue("DisplayName", Common.AppName);
-                k.SetValue("DisplayVersion", "2.25.3-ru");
+                k.SetValue("DisplayVersion", "2.25.3-gravmix");
                 k.SetValue("Publisher", Common.Publisher);
                 k.SetValue("InstallLocation", dir);
                 k.SetValue("DisplayIcon", icon);

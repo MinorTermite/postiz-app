@@ -58,4 +58,29 @@ Get-ChildItem $dist -Recurse -File | Where-Object { $_.Name -notlike '*.tar.gz' 
 }
 $zipFile.Dispose()
 
+# release assets: GitHub limits one file to 2 GB, Setup.exe downloads .part01, .part02, ...
+$gzFile = Join-Path $payload 'postiz-ru-image.tar.gz'
+$release = Join-Path $PSScriptRoot 'dist\release'
+if (Test-Path $gzFile) {
+    if (Test-Path $release) { Remove-Item $release -Recurse -Force }
+    New-Item -ItemType Directory -Force $release | Out-Null
+    Copy-Item $zipPath $release -Force
+    $partSize = 1900MB
+    $buf = New-Object byte[] (4MB)
+    $src = [System.IO.File]::OpenRead($gzFile)
+    $part = 0
+    while ($src.Position -lt $src.Length) {
+        $part++
+        $dst = [System.IO.File]::Create((Join-Path $release ('postiz-ru-image.tar.gz.part{0:D2}' -f $part)))
+        $left = [Math]::Min($partSize, $src.Length - $src.Position)
+        while ($left -gt 0) {
+            $n = $src.Read($buf, 0, [int][Math]::Min($buf.Length, $left))
+            $dst.Write($buf, 0, $n)
+            $left -= $n
+        }
+        $dst.Dispose()
+    }
+    $src.Dispose()
+}
+
 Get-ChildItem (Join-Path $PSScriptRoot 'dist') -Recurse -File | Select-Object FullName, @{n='MB';e={[math]::Round($_.Length / 1MB, 1)}}

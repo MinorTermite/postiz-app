@@ -13,7 +13,7 @@ namespace PostizRu
 {
     public static class Common
     {
-        public const string AppName = "Postiz RU";
+        public const string AppName = "GravMix";
         public const string AppId = "PostizRU";
         public const string Publisher = "GravMix";
         public const string ProjectName = "postiz-ru";

@@ -5,6 +5,7 @@ import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 import acceptLanguage from 'accept-language';
 import {
   cookieName,
+  fallbackLng,
   headerName,
   languages,
 } from '@gitroom/react/translation/i18n.config';
@@ -19,10 +20,7 @@ export async function proxy(request: NextRequest) {
     nextUrl.searchParams.get('loggedAuth');
   const lng = request.cookies.has(cookieName)
     ? acceptLanguage.get(request.cookies.get(cookieName).value)
-    : acceptLanguage.get(
-        request.headers.get('Accept-Language') ||
-          request.headers.get('accept-language')
-      );
+    : fallbackLng;
 
   const requestHeaders = new Headers(request.headers);
   if (lng) {
